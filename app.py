@@ -41,20 +41,22 @@ def normalize_text(s, sep_token = " \n "):
     s = s.replace("..",".")
     s = s.replace(". .",".")
     s = s.replace("\n", "")
+    s = s.replace("�","")
     s = s.strip()
     
     return s
 
-df_faqs['text']= df_faqs["FAQ Request/Summary"].apply(lambda x : normalize_text(x))
+df_faqs['question']= df_faqs["FAQ Request/Summary"].apply(lambda x : normalize_text(x))
+df_faqs['answer']= df_faqs["FAQ Response"].apply(lambda x : normalize_text(x))
 
 tokenizer = tiktoken.get_encoding("cl100k_base")
-df_faqs['n_tokens'] = df_faqs["text"].apply(lambda x: len(tokenizer.encode(x)))
+df_faqs['n_tokens'] = df_faqs["question"].apply(lambda x: len(tokenizer.encode(x)))
 df_faqs = df_faqs[df_faqs.n_tokens<8192]
 
-sample_encode = tokenizer.encode(df_faqs.text[0])
+sample_encode = tokenizer.encode(df_faqs.question[0])
 decode = tokenizer.decode_tokens_bytes(sample_encode)
 
-df_faqs['ada_v2'] = df_faqs["text"].apply(lambda x : get_embedding(x, engine = 'vector-embedding'))
+df_faqs['ada_v2'] = df_faqs["question"].apply(lambda x : get_embedding(x, engine = 'vector-embedding'))
 
 # search through the reviews for a specific product
 def search_docs(df, user_query, top_n=3, to_print=True):
@@ -77,7 +79,16 @@ def index():
     if ques is None:
         return render_template('index.html')
     res = search_docs(df_faqs, ques, top_n=4)
-    data = res.loc[:,'FAQ Response'].values
+    # data = res.loc[:,'FAQ Response'].values
+    data = []
+    x = res.loc[:,"similarities"].values
+    y = res.loc[:, "answer"].values
+    for i in range(0, len(res)):
+        if x[i] >= 0.85:
+            data.append(y[i])
+        else:
+            data.append("sorry idk")
+            break
     myDict = {}
     for i in range(0, len(data)):
         val = {i: data[i]}
