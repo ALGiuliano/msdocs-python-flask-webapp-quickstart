@@ -1,2 +1,10 @@
 Flask==2.0.2
 gunicorn
+openai
+num2words
+matplotlib
+plotly
+scipy
+scikit-learn
+pandas
+tiktoken
